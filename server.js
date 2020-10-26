@@ -304,11 +304,3 @@ function getBTTVEmotes(channel) {
         });
 	});
 }
-
-/* knex.schema.table('users', table => {
-    table.dropColumn('Rank Grouping');
-}).then(() => {
-    console.log('What');
-}).catch((err) =>{
-    console.log(err);
-}); */
