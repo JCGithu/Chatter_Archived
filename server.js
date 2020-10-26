@@ -1,11 +1,12 @@
 const sqlite3 = require('sqlite3').verbose();
 require('dotenv').config();
-const twemoji = require('twemoji');
-const fetch = require('node-fetch');
 
+//Fetch
+const fetch = require('node-fetch');
 global.fetch = fetch
 global.Headers = fetch.Headers;
 
+//KNEX
 const knex = require('knex')({
     client: 'sqlite3',
     connection: {
@@ -13,6 +14,11 @@ const knex = require('knex')({
     },
     useNullAsDefault: true,
 });
+
+//Custom Modules
+const { formatEmotes, getChan } = require('./modules/Message Formatting/formatEmotes.js');
+const { formatBadges } = require('./modules/Message Formatting/formatBadges.js');
+const textParse = require('./modules/Message Formatting/textParse.js');
 
 //EXPRESS
 const express = require('express');
@@ -46,9 +52,7 @@ var cooldown = ['nightbot', 'colloquialbot'];
 var removeTimer = [],
 top = [1, 5, 10];
 
-function getChan(channel = '') {
-	return channel.replace(/^#/, '');
-};
+
 const twitchBadgeCache = {
     data: { global: {} }
 };
@@ -127,10 +131,6 @@ function twitchNameToUser(username) {
 	.then(({ users }) => users[0] || null);
 };
 
-function getPosition(string, subString, index) {
-    return string.split(subString, index).join(subString).length;
-};
-
 function applyRank(msgUser, forLenTable){
 
 }
@@ -156,109 +156,6 @@ function newConnection(socket){
     client.on('whisper', onWhisperHandler);
     client.connect();
 
-    //Chat system
-    function removeA(arr) {
-        var what, a = arguments, L = a.length, ax;
-        while (L > 1 && arr.length) {
-            what = a[--L];
-            while ((ax= arr.indexOf(what)) !== -1) {
-                arr.splice(ax, 1);
-            }
-        }
-        return arr;
-    };
-    function ordinal_suffix_of(i) {
-        var j = i % 10,
-            k = i % 100;
-        if (j == 1 && k != 11) {
-            return i + "st";
-        }
-        if (j == 2 && k != 12) {
-            return i + "nd";
-        }
-        if (j == 3 && k != 13) {
-            return i + "rd";
-        }
-        return i + "th";
-    };
-    function htmlEntities(html) {
-        function it() {
-            return html.map(function(n, i, arr) {
-                    if(n.length == 1) {
-                        return n.replace(/[\u00A0-\u9999<>\&]/gim, function(i) {
-                            return '&#'+i.charCodeAt(0)+';';
-                        });
-                    }
-                    return n;
-                });
-        }
-        var isArray = Array.isArray(html);
-        if(!isArray) {
-            html = html.split('');
-        }
-        html = it(html);
-        if(!isArray) html = html.join('');
-        return html;
-    };
-    function formatEmotes(channel, text, emotes) {
-        let bttvEmotes = bttvEmoteCache.data.global.slice(0);
-        let chan = getChan(channel);
-        if(chan in bttvEmoteCache.data) {
-            bttvEmotes = bttvEmotes.concat(bttvEmoteCache.data[chan]);
-        }
-        var splitText = text.split('');
-        bttvEmotes.forEach(({ code, id, type, imageType }) => {
-			let hasEmote = text.indexOf(code);
-            if(hasEmote === -1) { return;
-            } else { 
-                for (let start = text.indexOf(code); start > -1; start = text.indexOf(code, start + 1)) {
-                    let end = start + code.length;
-                    let url = bttvEmoteCache.urlTemplate;
-                    url = url.replace('{{id}}', id).replace('{{image}}', '1x');
-                    var mote = [parseInt(start), parseInt(end)];
-                    var length =  mote[1] - mote[0],
-                        empty = Array.apply(null, new Array(length + 1)).map(function() { return '' });
-                    splitText = splitText.slice(0, mote[0]).concat(empty).concat(splitText.slice(mote[1] + 1, splitText.length));
-                    splitText.splice(mote[0], 1, '<img class="emoticon" src="' + url + '">');
-                    console.log(splitText);
-                };
-            };
-        })
-        for(var i in emotes) {
-            var e = emotes[i];
-            for(var j in e) {
-                var mote = e[j];
-                if(typeof mote == 'string') {
-                    mote = mote.split('-');
-                    mote = [parseInt(mote[0]), parseInt(mote[1])];
-                    var length =  mote[1] - mote[0],
-                        empty = Array.apply(null, new Array(length + 1)).map(function() { return '' });
-                    splitText = splitText.slice(0, mote[0]).concat(empty).concat(splitText.slice(mote[1] + 1, splitText.length));
-                    splitText.splice(mote[0], 1, '<img class="emoticon" src="http://static-cdn.jtvnw.net/emoticons/v1/' + i + '/3.0">');
-                }
-            }
-        }
-        return htmlEntities(splitText).join('')
-    };
-    function formatBadges(channel, user){
-        let chan = getChan(channel);
-        if('badges' in user && user.badges !== null) {
-            let badgeGroup = Object.assign({}, twitchBadgeCache.data.global, twitchBadgeCache.data[chan] || {});
-            let ele = [];
-			let badges = Object.keys(user.badges)
-				.forEach(type => {
-					let version = user.badges[type];
-					let group = badgeGroup[type];
-					if(group && version in group.versions) {
-						let url = group.versions[version].image_url_1x;
-                        var badgeAry = [url,type];
-                        ele.push(badgeAry);
-					}
-                },
-            []);
-            return ele;
-		}
-    }
     //POINTS SYSTEM
     function inputUser(user, channel){
         knex('users').insert([{user_name: user.username, points: 0}]).then((rows) => {
@@ -278,7 +175,7 @@ function newConnection(socket){
         knex.from('users').where('user_name', msgUser).then((userDataTable) => {
             let userData = userDataTable[0];
             knex.from('users').where('points', '>', userData.points).then((forLenTable) => {
-                client.say (channel, `${msgUser}'s current rank is ${ordinal_suffix_of(forLenTable.length+1)} with ${userData.points} points`);
+                client.say (channel, `${msgUser}'s current rank is ${textParse.suffix(forLenTable.length+1)} with ${userData.points} points`);
                 let usrRank = forLenTable.length;
                 for (let i=0; i < top.length; i++) {
                     if (usrRank < top[i]) {
@@ -324,7 +221,7 @@ function newConnection(socket){
                             }
                             if(user.username !== 'colloquialowl')cooldown.push(user.username);
                             setTimeout(function(){
-                                removeA(cooldown, user.username);
+                                textParse.cleave(cooldown, user.username);
                             }, 60000);
                         }).catch((err) => { console.log( err); throw err });
                     } else {
@@ -371,8 +268,8 @@ function newConnection(socket){
 
         let style = [];
         let userBracket = 3;
-        var formattedMsg = formatEmotes(channel, message, user.emotes);
-        var fmtBadges = formatBadges(channel, user);
+        var formattedMsg = formatEmotes(channel, message, user.emotes, bttvEmoteCache);
+        var fmtBadges = formatBadges(channel, user, twitchBadgeCache);
     
         if (message.startsWith("+")){
             dataInput(message, user, channel);
@@ -384,8 +281,8 @@ function newConnection(socket){
             cooldown.push(user.username);
             client.say (channel, `${user['display-name']} to delete your ranking whisper to this bot "-me please"`);
             setTimeout(function(){
-                removeA(removeTimer, user.username);
-                removeA(cooldown, user.username);
+                textParse.cleave(removeTimer, user.username);
+                textParse.cleave(cooldown, user.username);
             }, 60000);
         }
         
