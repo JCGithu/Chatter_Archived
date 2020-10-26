@@ -44,7 +44,7 @@ const opts = {
 
 var cooldown = ['nightbot', 'colloquialbot'];
 var removeTimer = [],
-top = [1, 10, 50];
+top = [1, 5, 10];
 
 function getChan(channel = '') {
 	return channel.replace(/^#/, '');
