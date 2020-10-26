@@ -1,11 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 require('dotenv').config();
 
-//Fetch
-const fetch = require('node-fetch');
-global.fetch = fetch
-global.Headers = fetch.Headers;
-
 //KNEX
 const knex = require('knex')({
     client: 'sqlite3',
@@ -19,6 +14,9 @@ const knex = require('knex')({
 const { formatEmotes, getChan } = require('./modules/Message Formatting/formatEmotes.js');
 const { formatBadges } = require('./modules/Message Formatting/formatBadges.js');
 const textParse = require('./modules/Message Formatting/textParse.js');
+
+const { request } = require ('./modules/Kraken/Fetch.js');
+const { kraken } = require ('./modules/Kraken/Kraken.js');
 
 //EXPRESS
 const express = require('express');
@@ -62,9 +60,6 @@ const bttvEmoteCache = {
     urlTemplate: '//cdn.betterttv.net/emote/{{id}}/{{image}}'
 };
 
-const krakenBase = 'https://api.twitch.tv/kraken/';
-const krakenClientID = '4g5an0yjebpf93392k4c5zll7d7xcec';
-
 const chatFilters = [
     // '\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF', // Partial Latin-1 Supplement
     // '\u0100-\u017F', // Latin Extended-A
@@ -87,22 +82,6 @@ const chatFilters = [
 ];
 const chatFilter = new RegExp(`[${chatFilters.join('')}]`);
 
-function request({ base = '', endpoint = '', qs, headers = {}, method = 'get' }) {
-
-    function formQuerystring(qs = {}) {
-        return Object.keys(qs)
-            .map(key => `${key}=${qs[key]}`)
-            .join('&');
-    }
-
-	let opts = {
-			method,
-			headers: new Headers(headers)
-		};
-	return fetch(base + endpoint + '?' + formQuerystring(qs), opts)
-	.then(res => res.json());
-};
-
 function getBadges(channel) {
 	return kraken({
 		base: 'https://badges.twitch.tv/v1/badges/',
@@ -111,17 +90,6 @@ function getBadges(channel) {
 	})
 	.then(data => data.badge_sets);
 }
-
-function kraken(opts) {
-	let defaults = {
-			base: krakenBase,
-			headers: {
-				'Client-ID': process.env.CLIENTID,
-				Accept: 'application/vnd.twitchtv.v5+json'
-			}
-		};
-	return request(Object.assign(defaults, opts));
-};
 
 function twitchNameToUser(username) {
 	return kraken({
