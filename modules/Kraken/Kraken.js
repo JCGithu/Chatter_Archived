@@ -31,6 +31,6 @@ function twitchNameToUser(username) {
 };
 
 module.exports = {
-	getBadges: getBadges,
-	twitchNameToUser: twitchNameToUser
+	getBadges,
+	twitchNameToUser
 };

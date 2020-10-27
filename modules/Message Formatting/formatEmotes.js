@@ -63,6 +63,6 @@ function getChan(channel = '') {
 };
 
 module.exports = {
-    formatEmotes: formatEmotes,
-    getChan: getChan
+    formatEmotes,
+    getChan
 };

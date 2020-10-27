@@ -20,5 +20,5 @@ function request({ base = '', endpoint = '', qs, headers = {}, method = 'get' })
 
 
 module.exports = {
-    request: request
+    request
 };

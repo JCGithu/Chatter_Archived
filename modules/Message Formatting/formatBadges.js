@@ -21,5 +21,5 @@ function formatBadges(channel, user, twitchBadgeCache) {
 }
 
 module.exports = {
-    formatBadges: formatBadges
+    formatBadges
 };

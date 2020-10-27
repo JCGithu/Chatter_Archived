@@ -1,22 +1,20 @@
 const sqlite3 = require('sqlite3').verbose();
 require('dotenv').config();
 
-//KNEX
-const knex = require('knex')({
-    client: 'sqlite3',
-    connection: {
-        filename: './data.db',
-    },
-    useNullAsDefault: true,
-});
-
 //Custom Modules
+const { knex } = require('./modules/KnexOpts.js');
 const { formatEmotes, getChan } = require('./modules/Message Formatting/formatEmotes.js');
 const { formatBadges } = require('./modules/Message Formatting/formatBadges.js');
 const textParse = require('./modules/Message Formatting/textParse.js');
 
 const { request } = require ('./modules/Kraken/Fetch.js');
 const { getBadges , twitchNameToUser } = require ('./modules/Kraken/Kraken.js');
+
+//COMMANDS
+const { checkRank } = require('./modules/Commands/checkRank.js');
+const { inputUser } = require('./modules/Commands/inputUser.js');
+const { addPoints } = require('./modules/Commands/addPoints.js');
+const { removeUser } = require('./modules/Commands/removeUser.js');
 
 //EXPRESS
 const express = require('express');
@@ -38,6 +36,7 @@ var useColor = true,
     doTimeouts = true;
 
 const tmi = require('tmi.js');
+const removeUser = require('./modules/Commands/removeUser.js');
 const opts = {
     identity: {
         username: 'colloquialbot',
@@ -48,7 +47,7 @@ const opts = {
 
 var cooldown = ['nightbot', 'colloquialbot'];
 var removeTimer = [],
-top = [1, 5, 10];
+    top = [1, 5, 10];
 
 
 const twitchBadgeCache = {
@@ -108,100 +107,18 @@ function newConnection(socket){
     client.connect();
 
     //POINTS SYSTEM
-    function inputUser(user, channel){
-        knex('users').insert([{user_name: user.username, points: 0}]).then((rows) => {
-            console.log('NEW USER ADDED!  -- ' + user.username);
-            client.say (channel, `${user.username} added!`);
-        }).catch((err) =>{
-            console.log('User already added: '+ user.username);
-        });
-    };
-    function checkRank(splitMsg, user, channel){
-        let displayName = user['display-name'];
-        msgUser = user.username;
-        if (splitMsg[1] != null && splitMsg[1] !== 'me'){
-            let displayName = splitMsg[1].replace('@', '');
-            msgUser = splitMsg[1].replace('@', '').toLowerCase();
-        };
-        knex.from('users').where('user_name', msgUser).then((userDataTable) => {
-            let userData = userDataTable[0];
-            knex.from('users').where('points', '>', userData.points).then((forLenTable) => {
-                client.say (channel, `${msgUser}'s current rank is ${textParse.suffix(forLenTable.length+1)} with ${userData.points} points`);
-                let usrRank = forLenTable.length;
-                for (let i=0; i < top.length; i++) {
-                    if (usrRank < top[i]) {
-                        usrRank = i;
-                        knex.from('users').select("user_name", "rank").where('user_name', msgUser).update("rank", i )
-                        .then(() => {
-                            console.log('Ran add interger: ' + i);
-                        }).catch((err) => { console.log(err); throw err });
-                        break;
-                    };
-                };
-            });
-        });
-    };
-    function addPoints(splitMsg, user, channel){
-        let msgUser = splitMsg[0].replace('@','').toLowerCase();
-        if (msgUser){
-            knex.from('users').select("user_name", "points").where('user_name', msgUser)
-            .then((returnData) => {
-                if (returnData.length != 0){
-                    var newData = JSON.parse(JSON.stringify(returnData[0]));
-                    var points = parseInt(newData.points) + 1;
-                    let oldRow, newRow;
-                    if (msgUser !== user.username){
-                        knex.from('users').select('*').orderBy('points', 'desc').then((table) => {
-                            for (let index = 0; index < table.length; index++) {
-                                if (table[index].user_name == msgUser){
-                                    oldRow = index+1;
-                                }
-                            }
-                        }).catch((err) => { console.log( err); throw err });
-                        console.log('New points are: ' + points);
-                        knex.from('users').select("user_name", "points").where('user_name', msgUser).update({ points: points })
-                        .then(() => {}).catch((err) => { console.log(err); throw err });
-                        knex.from('users').select('*').orderBy('points', 'desc').then((table) => {
-                            for (let j = 0; j < table.length; j++) {
-                                if (table[j].user_name == msgUser){
-                                    newRow = j+1;
-                                    if (newRow < oldRow){
-                                        client.say(channel, 'Rank has increased! ' + msgUser + ' is now rank ' + newRow);
-                                    }
-                                }
-                            }
-                            if(user.username !== 'colloquialowl')cooldown.push(user.username);
-                            setTimeout(function(){
-                                textParse.cleave(cooldown, user.username);
-                            }, 60000);
-                        }).catch((err) => { console.log( err); throw err });
-                    } else {
-                        console.log("Can't give points to yourself");
-                    }
-                }
-            }).catch((err) => { console.log( err); throw err });
-        }
-    };
     function dataInput(message, user, channel){
         let splitMsg = message.slice(1).split(" ").filter((el) => el.length > 0);
         let msgUser;
         if (splitMsg[0] == 'me'){
-            inputUser(user, channel);
+            inputUser(client, user, channel);
         } else if (splitMsg[0] == 'rank'){
-            checkRank(splitMsg, user, channel)
+            checkRank(client, splitMsg, user, channel, top);
         } else if (cooldown.includes(user.username) == false && splitMsg[0] != null){
-            addPoints(splitMsg, user, channel);
+            addPoints(client, splitMsg, user, channel);
         } else {
             console.log('User is on cooldown');
         };
-    };
-    function dataRemove(user){   
-        knex.from('users').where('user_name', user.username).del().then(() => {
-            console.log('Removed ', user.username, ' from the database')
-        }).catch((err) =>{
-            console.log('Error deleting user: '+ user.username);
-            console.log(err);
-        });
     };
     //Client functions
     function onConnectedHandler (addr, port) {
@@ -253,7 +170,7 @@ function newConnection(socket){
     function onWhisperHandler (channel, user, message, self){
         if (self || chatFilter.test(message) ) { return; }
         if (message == '-me please'){
-            dataRemove(user);
+            removeUser(user);
         }
     }
 }
