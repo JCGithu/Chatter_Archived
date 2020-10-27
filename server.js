@@ -1,20 +1,22 @@
 const sqlite3 = require('sqlite3').verbose();
 require('dotenv').config();
-
-//Custom Modules
 const { knex } = require('./modules/KnexOpts.js');
+
+//Message Parsing Modules
 const { formatEmotes, getChan } = require('./modules/Message Formatting/formatEmotes.js');
 const { formatBadges } = require('./modules/Message Formatting/formatBadges.js');
-const textParse = require('./modules/Message Formatting/textParse.js');
 
+//Kraken Modules
 const { request } = require ('./modules/Kraken/Fetch.js');
 const { getBadges , twitchNameToUser } = require ('./modules/Kraken/Kraken.js');
+const { getBTTVEmotes } = require ('./modules/Kraken/getBTTVEmotes.js');
 
-//COMMANDS
+//Command Modules
 const { checkRank } = require('./modules/Commands/checkRank.js');
 const { inputUser } = require('./modules/Commands/inputUser.js');
 const { addPoints } = require('./modules/Commands/addPoints.js');
 const { removeUser } = require('./modules/Commands/removeUser.js');
+const textParse = require('./modules/Message Formatting/textParse.js');
 
 //EXPRESS
 const express = require('express');
@@ -48,7 +50,6 @@ var cooldown = ['nightbot', 'colloquialbot'];
 var removeTimer = [],
     top = [1, 5, 10];
 
-
 const twitchBadgeCache = {
     data: { global: {} }
 };
@@ -58,92 +59,42 @@ const bttvEmoteCache = {
     urlTemplate: '//cdn.betterttv.net/emote/{{id}}/{{image}}'
 };
 
-const chatFilters = [
-    // '\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF', // Partial Latin-1 Supplement
-    // '\u0100-\u017F', // Latin Extended-A
-    // '\u0180-\u024F', // Latin Extended-B
-    '\u0250-\u02AF', // IPA Extensions
-    '\u02B0-\u02FF', // Spacing Modifier Letters
-    '\u0300-\u036F', // Combining Diacritical Marks
-    '\u0370-\u03FF', // Greek and Coptic
-    '\u0400-\u04FF', // Cyrillic
-    '\u0500-\u052F', // Cyrillic Supplement
-    '\u0530-\u1FFF', // Bunch of non-English
-    '\u2100-\u214F', // Letter Like
-    '\u2500-\u257F', // Box Drawing
-    '\u2580-\u259F', // Block Elements
-    '\u25A0-\u25FF', // Geometric Shapes
-    '\u2600-\u26FF', // Miscellaneous Symbols
-    // '\u2700-\u27BF', // Dingbats
-    '\u2800-\u28FF', // Braille
-    // '\u2C60-\u2C7F', // Latin Extended-C
-];
-const chatFilter = new RegExp(`[${chatFilters.join('')}]`);
-
-function applyRank(msgUser, forLenTable){
-
-}
-
 function newConnection(socket){
     console.log('New connection: ' + socket.id);
     const client = new tmi.client(opts);
+    
     client.on('chat', onMessageHandler);
     client.on('action', onMessageHandler);
-    client.on('connected', onConnectedHandler);
-    client.on('disconnected', onDisconnectedHandler);
-    client.on('join', (channel, username, self) => {
-		if(!self) {
-			return;
-        }
-        console.log('JOINED!');
-		let chan = getChan(channel);
-		getBTTVEmotes(chan);
-		twitchNameToUser(chan)
-			.then(user => getBadges(user._id))
-            .then(badges => twitchBadgeCache.data[chan] = badges);
-	});
-    client.on('whisper', onWhisperHandler);
-    client.connect();
-
     //POINTS SYSTEM
     function dataInput(message, user, channel){
         let splitMsg = message.slice(1).split(" ").filter((el) => el.length > 0);
         let msgUser;
         if (splitMsg[0] == 'me'){
-            inputUser(client, user, channel);
+            inputUser(client, user, channel, top);
         } else if (splitMsg[0] == 'rank'){
-            checkRank(client, splitMsg, user, channel, top);
+            checkRank(client, splitMsg, user, channel, top, true);
         } else if (cooldown.includes(user.username) == false && splitMsg[0] != null){
-            addPoints(client, splitMsg, user, channel);
+            addPoints(client, splitMsg, user, channel, top);
+            if(user.username !== 'colloquialowl')cooldown.push(user.username);
+            setTimeout(function(){
+                textParse.cleave(cooldown, user.username);
+            }, 60000);
         } else {
             console.log('User is on cooldown');
         };
     };
-    //Client functions
-    function onConnectedHandler (addr, port) {
-        console.log(`* Connected to ${addr}:${port}`);
-        getBTTVEmotes();
-		getBadges()
-			.then(badges => twitchBadgeCache.data.global = badges);
-    };
-    function onDisconnectedHandler (){
-        twitchBadgeCache.data = { global: {} };
-		bttvEmoteCache.data = { global: [] };
-    };
     function onMessageHandler (channel, user, message, self) {
-        if (self || chatFilter.test(message) ) { return; }
+        if (self || textParse.chatFilter.test(message) ) { return; }
 
         let style = [];
-        let userBracket = 3;
+        let userBracket = top.length + 1;
         var formattedMsg = formatEmotes(channel, message, user.emotes, bttvEmoteCache);
         var fmtBadges = formatBadges(channel, user, twitchBadgeCache);
     
         if (message.startsWith("+")){
             dataInput(message, user, channel);
             style.push('function');
-        }
-    
-        if (message == '-me'){
+        } else if (message == '-me'){
             removeTimer.push(user.username);
             client.say (channel, `${user['display-name']} to delete your ranking whisper to this bot "-me please"`);
             setTimeout(function(){
@@ -152,50 +103,38 @@ function newConnection(socket){
         }
         
         knex.from('users').where('user_name', user.username).select("rank").then((rankNum) => {
-            if (rankNum[0]){
-                userBracket = rankNum[0].rank
-            }
-            // Function that grabs their rank bracket if they haven't got one yet
+            userBracket = rankNum[0].rank
             socket.emit('newMsg', formattedMsg, user['display-name'], style, userBracket, fmtBadges);
             console.log(user['display-name'] + ': ' + message);
         }).catch((err) =>{
             console.log(err);
         });
     };
-    function onWhisperHandler (channel, user, message, self){
+
+    client.on('connected', (addr, port) => {
+        console.log(`* Connected to ${addr}:${port}`);
+        getBTTVEmotes(bttvEmoteCache);
+		getBadges()
+			.then(badges => twitchBadgeCache.data.global = badges);
+    });
+    client.on('disconnected', function(){
+        twitchBadgeCache.data = { global: {} };
+		bttvEmoteCache.data = { global: [] };
+    });
+    client.on('join', (channel, username, self) => {
+		if(!self) {return;}
+        console.log('JOINED!');
+		let chan = getChan(channel);
+		getBTTVEmotes(bttvEmoteCache, chan);
+		twitchNameToUser(chan)
+			.then(user => getBadges(user._id))
+            .then(badges => twitchBadgeCache.data[chan] = badges);
+	});
+    client.on('whisper', (channel, user, message, self) => {
         if (self || chatFilter.test(message) ) { return; }
         if (message == '-me please'){
             removeUser(user);
         }
-    }
-}
-
-function getBTTVEmotes(channel) {
-	let endpoint = 'emotes';
-	let global = true;
-	if(channel) {
-		endpoint = 'channels/' + channel;
-		global = false;
-	}
-	return request({
-		base: 'https://api.betterttv.net/2/',
-		endpoint
-	})
-	.then(({ emotes, status, urlTemplate }) => {
-		if(status === 404) return;
-		bttvEmoteCache.urlTemplate = urlTemplate;
-		emotes.forEach(n => {
-			n.global = global;
-			n.type = [ 'bttv', 'emote' ];
-			if(!global) {
-				if(channel in bttvEmoteCache.data === false) {
-					bttvEmoteCache.data[channel] = [];
-				}
-				bttvEmoteCache.data[channel].push(n);
-			}
-			else {
-				bttvEmoteCache.data.global.push(n);
-			}
-        });
-	});
+    });
+    client.connect();    
 }

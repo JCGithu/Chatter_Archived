@@ -1,7 +1,26 @@
 const { knex } = require('../KnexOpts.js');
 const textParse = require('../Message Formatting/textParse.js');
 
-function addPoints(client, splitMsg, user, channel){
+function rankColumnCheck(msgUser, top){
+    knex.from('users').where('user_name', msgUser).then((userDataTable) => {
+        let userData = userDataTable[0];
+        knex.from('users').where('points', '>', userData.points).then((forLenTable) => {
+            let usrRank = forLenTable.length;
+            for (let i=0; i < top.length; i++) {
+                if (usrRank < top[i]) {
+                    usrRank = i;
+                    knex.from('users').select("user_name", "rank").where('user_name', msgUser).update({ rank: i })
+                    .then(() => {
+                        console.log('Changed user rank bracket to: ' + i);
+                    }).catch((err) => { console.log(err); throw err });
+                    break;
+                };
+            };
+        });
+    });
+}
+
+function addPoints(client, splitMsg, user, channel, top){
     let msgUser = splitMsg[0].replace('@','').toLowerCase();
     if (msgUser){
         knex.from('users').select("user_name", "points").where('user_name', msgUser)
@@ -27,13 +46,10 @@ function addPoints(client, splitMsg, user, channel){
                                 newRow = j+1;
                                 if (newRow < oldRow){
                                     client.say(channel, 'Rank has increased! ' + msgUser + ' is now rank ' + newRow);
+                                    rankColumnCheck(msgUser, top);
                                 }
                             }
                         }
-                        if(user.username !== 'colloquialowl')cooldown.push(user.username);
-                        setTimeout(function(){
-                            textParse.cleave(cooldown, user.username);
-                        }, 60000);
                     }).catch((err) => { console.log( err); throw err });
                 } else {
                     console.log("Can't give points to yourself");
