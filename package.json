@@ -18,7 +18,6 @@
     "socket.io": "^2.3.0",
     "sqlite3": "^5.0.0",
     "tmi.js": "^1.5.0",
-    "twemoji": "^13.0.1",
     "underscore": "^1.11.0"
   }
 }

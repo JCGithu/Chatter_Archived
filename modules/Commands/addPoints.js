@@ -1,4 +1,5 @@
 const { knex } = require('../KnexOpts.js');
+const textParse = require('../Message Formatting/textParse.js');
 
 function addPoints(client, splitMsg, user, channel){
     let msgUser = splitMsg[0].replace('@','').toLowerCase();
