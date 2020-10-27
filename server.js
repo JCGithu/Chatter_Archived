@@ -16,7 +16,7 @@ const { formatBadges } = require('./modules/Message Formatting/formatBadges.js')
 const textParse = require('./modules/Message Formatting/textParse.js');
 
 const { request } = require ('./modules/Kraken/Fetch.js');
-const { kraken } = require ('./modules/Kraken/Kraken.js');
+const { getBadges , twitchNameToUser } = require ('./modules/Kraken/Kraken.js');
 
 //EXPRESS
 const express = require('express');
@@ -81,23 +81,6 @@ const chatFilters = [
     // '\u2C60-\u2C7F', // Latin Extended-C
 ];
 const chatFilter = new RegExp(`[${chatFilters.join('')}]`);
-
-function getBadges(channel) {
-	return kraken({
-		base: 'https://badges.twitch.tv/v1/badges/',
-		endpoint: (channel ? `channels/${channel}` : 'global') + '/display',
-		qs: { language: 'en' }
-	})
-	.then(data => data.badge_sets);
-}
-
-function twitchNameToUser(username) {
-	return kraken({
-		endpoint: 'users',
-		qs: { login: username }
-	})
-	.then(({ users }) => users[0] || null);
-};
 
 function applyRank(msgUser, forLenTable){
 
