@@ -36,7 +36,6 @@ var useColor = true,
     doTimeouts = true;
 
 const tmi = require('tmi.js');
-const removeUser = require('./modules/Commands/removeUser.js');
 const opts = {
     identity: {
         username: 'colloquialbot',
@@ -146,11 +145,9 @@ function newConnection(socket){
     
         if (message == '-me'){
             removeTimer.push(user.username);
-            cooldown.push(user.username);
             client.say (channel, `${user['display-name']} to delete your ranking whisper to this bot "-me please"`);
             setTimeout(function(){
                 textParse.cleave(removeTimer, user.username);
-                textParse.cleave(cooldown, user.username);
             }, 60000);
         }
         
@@ -164,9 +161,7 @@ function newConnection(socket){
         }).catch((err) =>{
             console.log(err);
         });
-
-
-    }
+    };
     function onWhisperHandler (channel, user, message, self){
         if (self || chatFilter.test(message) ) { return; }
         if (message == '-me please'){
