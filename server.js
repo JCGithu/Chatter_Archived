@@ -127,7 +127,7 @@ function newConnection(socket){
                 socket.emit('rankings', data)
             }
         });
-    }, 30000);
+    }, 300000);
 
     client.on('connected', (addr, port) => {
         console.log(`* Connected to ${addr}:${port}`);
