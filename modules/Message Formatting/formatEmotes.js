@@ -17,6 +17,7 @@ function htmlEntities(html) {
     if(!isArray) html = html.join('');
     return html;
 };
+
 function formatEmotes(channel, text, emotes, bttvEmoteCache) {
     let bttvEmotes = bttvEmoteCache.data.global.slice(0);
     let chan = getChan(channel);
@@ -55,7 +56,7 @@ function formatEmotes(channel, text, emotes, bttvEmoteCache) {
             }
         }
     }
-    return htmlEntities(splitText).join('')
+    return htmlEntities(splitText).join('');
 };
 
 function getChan(channel = '') {

@@ -28,6 +28,20 @@ p {
     animation: shadow-pop-br 0.3s cubic-bezier(0.470, 0.000, 0.745, 0.715) both;
 }
 
+#rankBox {
+    background-color: #fe5f55;
+    color: #f7f7ff;
+    display: inline-block;
+    width: max-content;
+    font-weight: lighter;
+    max-width: 90vw;
+    border-radius: 1em;
+    margin: 2.5px 10px 2.5px 10px;
+    padding: 5px 15px 5px 10px;
+    overflow-wrap: break-word;
+    animation: shadow-pop-br 0.3s cubic-bezier(0.470, 0.000, 0.745, 0.715) both;
+}
+
 .emoticon{
     width: 1em !important;
 }

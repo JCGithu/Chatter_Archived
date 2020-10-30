@@ -1,3 +1,4 @@
+const util = require('util');
 const sqlite3 = require('sqlite3').verbose();
 require('dotenv').config();
 const { knex } = require('./modules/KnexOpts.js');
@@ -16,6 +17,7 @@ const { checkRank } = require('./modules/Commands/checkRank.js');
 const { inputUser } = require('./modules/Commands/inputUser.js');
 const { addPoints } = require('./modules/Commands/addPoints.js');
 const { removeUser } = require('./modules/Commands/removeUser.js');
+const { topRank } = require('./modules/topRank.js');
 const textParse = require('./modules/Message Formatting/textParse.js');
 
 //EXPRESS
@@ -41,7 +43,7 @@ const tmi = require('tmi.js');
 const opts = {
     identity: {
         username: 'colloquialbot',
-        password: process.env.OAUTH3
+        password: process.env.OAUTH4
     },
     channels: ['colloquialowl']
 };
@@ -101,15 +103,33 @@ function newConnection(socket){
                 textParse.cleave(removeTimer, user.username);
             }, 60000);
         }
-        
-        knex.from('users').where('user_name', user.username).select("rank").then((rankNum) => {
-            userBracket = rankNum[0].rank
-            socket.emit('newMsg', formattedMsg, user['display-name'], style, userBracket, fmtBadges);
-            console.log(user['display-name'] + ': ' + message);
-        }).catch((err) =>{
-            console.log(err);
+
+        knex('users').select('user_name').where('user_name', user.username).then((rows) => {
+            if (rows.length===0) {
+                socket.emit('newMsg', formattedMsg, user['display-name'], style, userBracket, fmtBadges);
+            } else{
+                knex.from('users').where('user_name', user.username).select("rank").then((rankNum) => {
+                    if (rankNum[0].rank != null){
+                        console.log(rankNum[0].rank);
+                        userBracket = rankNum[0].rank;
+                    }
+                    console.log(userBracket);
+                    socket.emit('newMsg', formattedMsg, user['display-name'], style, userBracket, fmtBadges);
+                    console.log(user['display-name'] + ': ' + message);
+                }).catch((err) =>{
+                    console.log(err);
+                });
+            }
         });
     };
+
+    setInterval(function(){
+        topRank(top, socket).then((data) => {
+            if (data){
+                socket.emit('rankings', data)
+            }
+        });
+    }, 30000);
 
     client.on('connected', (addr, port) => {
         console.log(`* Connected to ${addr}:${port}`);
@@ -131,7 +151,7 @@ function newConnection(socket){
             .then(badges => twitchBadgeCache.data[chan] = badges);
 	});
     client.on('whisper', (channel, user, message, self) => {
-        if (self || chatFilter.test(message) ) { return; }
+        if (self || textParse.chatFilter.test(message) ) { return; }
         if (message == '-me please'){
             removeUser(user);
         }

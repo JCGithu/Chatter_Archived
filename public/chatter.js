@@ -1,8 +1,10 @@
 const socket = io('http://localhost:3000');
 socket.on('newMsg', msgAdd);
+socket.on('rankings', rankAdd);
 
 var keyframesTemplate = '@keyframes smooth-slide {0%{height:{{height}}; margin: 2.5px 10px 2.5px 10px; padding: 5px 15px 5px 10px; transform: translateY(-1000px) scaleY(2) scaleX(0.2); transform-origin: 50% 0%;}100% {height: 0; margin: 0px 0px 0px 0px; padding: 0px 0px 0px 0px; transform: translateY(-1000px) scaleY(2) scaleX(0.2); transform-origin: 50% 0%;}}'
 var replacementPattern = /\{\{height\}\}/g;
+var rankArray = [];
 
 function insertKeyframes(height) {
   var styleElement = document.createElement('style');
@@ -35,7 +37,6 @@ function removeTimer(chatDiv){
 
 function buildBox(chatDiv, msg, user, style, userBracket, fmtBadges){
   chatDiv.id = 'chatbox';
-  console.log(fmtBadges);
   let chatName = document.createElement("span");
     chatName.classList.add('chat-name');
     if (userBracket == 0){user = '👑 ' + user};
@@ -68,4 +69,32 @@ function msgAdd(msg, user,  style, userBracket, fmtBadges){
   buildBox(chatDiv, msg, user, style, userBracket, fmtBadges);
   removeTop(chatDiv);
   removeTimer(chatDiv);
+};
+
+function rankAdd(rankArray){
+  let rankDiv = document.createElement("div");
+  console.log(rankArray[0][0].position);
+  console.log('ran Rank array');
+  rankDiv.id = 'rankBox';
+  rankDiv.classList.add('function');
+  document.body.appendChild(rankDiv);
+  var br = document.createElement("br");
+  for (let j = 0; j < rankArray.length; j++) {
+    console.log(rankArray[j][0].name);
+    let chatNum = document.createElement("span");
+    let chatName = document.createElement("span");
+    let chatPoints = document.createElement("span");
+    chatNum.classList.add('chat-chat');
+    chatNum.innerHTML = rankArray[j][0].position + '. ';
+    chatName.classList.add('chat-name');
+    chatName.innerHTML = rankArray[j][0].name + ' ';
+    chatPoints.classList.add('chat-chat');
+    chatPoints.innerHTML = rankArray[j][0].points + ' points<br>';
+    if (j==(rankArray.length-1)){chatPoints.innerHTML = rankArray[j][0].points + ' points';}
+    rankDiv.appendChild(chatNum);
+    rankDiv.appendChild(chatName);
+    rankDiv.appendChild(chatPoints);
+  }
+  removeTop(rankDiv);
+  removeTimer(rankDiv);
 };
