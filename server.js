@@ -110,10 +110,8 @@ function newConnection(socket){
             } else{
                 knex.from('users').where('user_name', user.username).select("rank").then((rankNum) => {
                     if (rankNum[0].rank != null){
-                        console.log(rankNum[0].rank);
                         userBracket = rankNum[0].rank;
                     }
-                    console.log(userBracket);
                     socket.emit('newMsg', formattedMsg, user['display-name'], style, userBracket, fmtBadges);
                     console.log(user['display-name'] + ': ' + message);
                 }).catch((err) =>{
