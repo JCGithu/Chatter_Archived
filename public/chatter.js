@@ -73,14 +73,11 @@ function msgAdd(msg, user,  style, userBracket, fmtBadges){
 
 function rankAdd(rankArray){
   let rankDiv = document.createElement("div");
-  console.log(rankArray[0][0].position);
-  console.log('ran Rank array');
   rankDiv.id = 'rankBox';
   rankDiv.classList.add('function');
   document.body.appendChild(rankDiv);
   var br = document.createElement("br");
   for (let j = 0; j < rankArray.length; j++) {
-    console.log(rankArray[j][0].name);
     let chatNum = document.createElement("span");
     let chatName = document.createElement("span");
     let chatPoints = document.createElement("span");
