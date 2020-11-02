@@ -23,7 +23,7 @@ function rankColumnCheck(msgUser, top){
     });
 }
 
-function chatCheck(msgUser, channel, checkInChat){
+function chatCheck(msgUser, channel, checkInChat, onlyMods){
     return new Promise((res) => {
         function checkChat(){
             let chan = getChan(channel);
@@ -37,7 +37,15 @@ function chatCheck(msgUser, channel, checkInChat){
             checkChat().then((data) => {
                 if (data){
                     var users = [];
-                    Object.values(data.chatters).forEach((e) => { if(Array.isArray(e)){ users = users.concat(e) } });
+                    if (onlyMods){
+                        for (const [key, value] of Object.entries(data.chatters)){ 
+                            if (Array.isArray(value) && key !== 'viewers'){
+                                users = users.concat(value);
+                            }
+                        };
+                    } else {
+                        Object.values(data.chatters).forEach((e) => { if(Array.isArray(e)){ users = users.concat(e) } });
+                    }
                     if (users.includes(msgUser)){
                         res(true);
                     } else {
@@ -52,10 +60,10 @@ function chatCheck(msgUser, channel, checkInChat){
     });
 }
 
-function addPoints(client, splitMsg, user, channel, top, checkInChat){
+function addPoints(client, splitMsg, user, channel, top, customSettings){
     let msgUser = splitMsg[0].replace('@','').toLowerCase();
     if (msgUser){
-        let check = chatCheck(msgUser, channel, checkInChat)
+        let check = chatCheck(msgUser, channel, customSettings.checkInChat, customSettings.onlyMods)
         check.then((value) => {
             if (value){
                 knex.from('users').select("user_name", "points").where('user_name', msgUser)

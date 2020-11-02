@@ -41,6 +41,8 @@ var useColor = true,
 
 var myChannel = ['colloquialowl'];
 checkInChat = true;
+onlyMods = false;
+var customSettings = { checkInChat: checkInChat, onlyMods: onlyMods};
 
 const tmi = require('tmi.js');
 const opts = {
@@ -79,7 +81,7 @@ function newConnection(socket){
         } else if (splitMsg[0] == 'rank'){
             checkRank(client, splitMsg, user, channel, top, true);
         } else if (cooldown.includes(user.username) == false && splitMsg[0] != null){
-            addPoints(client, splitMsg, user, channel, top, checkInChat);
+            addPoints(client, splitMsg, user, channel, top, customSettings);
             if(user.username !== 'colloquialowl')cooldown.push(user.username);
             setTimeout(function(){
                 textParse.cleave(cooldown, user.username);
