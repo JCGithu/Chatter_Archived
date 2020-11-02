@@ -39,13 +39,16 @@ var useColor = true,
     showEmotes = true,
     doTimeouts = true;
 
+var myChannel = ['colloquialowl'];
+checkInChat = true;
+
 const tmi = require('tmi.js');
 const opts = {
     identity: {
         username: 'colloquialbot',
         password: process.env.OAUTH4
     },
-    channels: ['colloquialowl']
+    channels: myChannel,
 };
 
 var cooldown = ['nightbot', 'colloquialbot'];
@@ -76,7 +79,7 @@ function newConnection(socket){
         } else if (splitMsg[0] == 'rank'){
             checkRank(client, splitMsg, user, channel, top, true);
         } else if (cooldown.includes(user.username) == false && splitMsg[0] != null){
-            addPoints(client, splitMsg, user, channel, top);
+            addPoints(client, splitMsg, user, channel, top, checkInChat);
             if(user.username !== 'colloquialowl')cooldown.push(user.username);
             setTimeout(function(){
                 textParse.cleave(cooldown, user.username);
@@ -154,5 +157,5 @@ function newConnection(socket){
             removeUser(user);
         }
     });
-    client.connect();    
+    client.connect();
 }
