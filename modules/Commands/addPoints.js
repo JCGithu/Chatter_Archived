@@ -4,13 +4,13 @@ const textParse = require('../Message Formatting/textParse.js');
 const { request } = require ('../Kraken/Fetch.js');
 const { getChan } = require('../Message Formatting/formatEmotes.js');
 
-function rankColumnCheck(msgUser, top){
+function rankColumnCheck(msgUser, infoArrays.top){
     knex.from('users').where('user_name', msgUser).then((userDataTable) => {
         let userData = userDataTable[0];
         knex.from('users').where('points', '>', userData.points).then((forLenTable) => {
             let usrRank = forLenTable.length;
-            for (let i=0; i < top.length; i++) {
-                if (usrRank < top[i]) {
+            for (let i=0; i < infoArrays.top.length; i++) {
+                if (usrRank < infoArrays.top[i]) {
                     usrRank = i;
                     knex.from('users').select("user_name", "rank").where('user_name', msgUser).update({ rank: i })
                     .then(() => {
@@ -60,7 +60,7 @@ function chatCheck(msgUser, channel, checkInChat, onlyMods){
     });
 }
 
-function addPoints(client, splitMsg, user, channel, top, customSettings){
+function addPoints(client, splitMsg, user, channel, infoArrays, customSettings){
     let msgUser = splitMsg[0].replace('@','').toLowerCase();
     if (msgUser){
         let check = chatCheck(msgUser, channel, customSettings.checkInChat, customSettings.onlyMods)
@@ -73,6 +73,9 @@ function addPoints(client, splitMsg, user, channel, top, customSettings){
                         var points = parseInt(newData.points) + 1;
                         let oldRow, newRow;
                         if (msgUser !== user.username){
+                            if (infoArrays.double.includes(msgUser)) {
+                                var points = parseInt(newData.points) + 2;
+                            } 
                             knex.from('users').select('*').orderBy('points', 'desc').then((table) => {
                                 for (let index = 0; index < table.length; index++) {
                                     if (table[index].user_name == msgUser){
@@ -89,7 +92,7 @@ function addPoints(client, splitMsg, user, channel, top, customSettings){
                                         newRow = j+1;
                                         if (newRow < oldRow){
                                             client.say(channel, 'Rank has increased! ' + msgUser + ' is now rank ' + newRow);
-                                            rankColumnCheck(msgUser, top);
+                                            rankColumnCheck(msgUser, infoArrays.top);
                                         }
                                     }
                                 }

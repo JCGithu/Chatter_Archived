@@ -55,7 +55,8 @@ const opts = {
 
 var cooldown = ['nightbot', 'colloquialbot'];
 var removeTimer = [],
-    top = [1, 5, 10];
+    top = [1, 5, 10],
+    double = [];
 
 const twitchBadgeCache = {
     data: { global: {} }
@@ -76,12 +77,16 @@ function newConnection(socket){
     function dataInput(message, user, channel){
         let splitMsg = message.slice(1).split(" ").filter((el) => el.length > 0);
         let msgUser;
+        let infoArrays = {
+            top: top,
+            double: double
+        }
         if (splitMsg[0] == 'me'){
             inputUser(client, user, channel, top);
         } else if (splitMsg[0] == 'rank'){
             checkRank(client, splitMsg, user, channel, top, true);
         } else if (cooldown.includes(user.username) == false && splitMsg[0] != null){
-            addPoints(client, splitMsg, user, channel, top, customSettings);
+            addPoints(client, splitMsg, user, channel, infoArrays, customSettings);
             if(user.username !== 'colloquialowl')cooldown.push(user.username);
             setTimeout(function(){
                 textParse.cleave(cooldown, user.username);
@@ -107,6 +112,10 @@ function newConnection(socket){
             setTimeout(function(){
                 textParse.cleave(removeTimer, user.username);
             }, 60000);
+        }
+
+        if (user["custom-reward-id"] === "4a728898-4e19-4ed9-be1e-f76df1d8c1a5") {
+            double.push(user.username);
         }
 
         knex('users').select('user_name').where('user_name', user.username).then((rows) => {
