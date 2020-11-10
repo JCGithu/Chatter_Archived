@@ -4,13 +4,13 @@ const textParse = require('../Message Formatting/textParse.js');
 const { request } = require ('../Kraken/Fetch.js');
 const { getChan } = require('../Message Formatting/formatEmotes.js');
 
-function rankColumnCheck(msgUser, infoArrays.top){
+function rankColumnCheck(msgUser, top){
     knex.from('users').where('user_name', msgUser).then((userDataTable) => {
         let userData = userDataTable[0];
         knex.from('users').where('points', '>', userData.points).then((forLenTable) => {
             let usrRank = forLenTable.length;
-            for (let i=0; i < infoArrays.top.length; i++) {
-                if (usrRank < infoArrays.top[i]) {
+            for (let i=0; i < top.length; i++) {
+                if (usrRank < top[i]) {
                     usrRank = i;
                     knex.from('users').select("user_name", "rank").where('user_name', msgUser).update({ rank: i })
                     .then(() => {
