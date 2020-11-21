@@ -68,7 +68,7 @@ function msgAdd(msg, user,  style, userBracket, fmtBadges){
   let chatDiv = document.createElement("div");
   buildBox(chatDiv, msg, user, style, userBracket, fmtBadges);
   removeTop(chatDiv);
-  removeTimer(chatDiv);
+  //removeTimer(chatDiv);
 };
 
 function rankAdd(rankArray){
