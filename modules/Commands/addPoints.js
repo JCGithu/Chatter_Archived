@@ -102,7 +102,10 @@ function addPoints(client, splitMsg, user, channel, infoArrays, customSettings) 
               .select('user_name', 'points')
               .where('user_name', chatUser)
               .then((returnData) => {
-                readAndWritePoints(returnData, msgUser, user, infoArrays, client);
+                if (returnData.length !== 0) {
+                  console.log(returnData[0].user_name);
+                  readAndWritePoints(returnData, returnData[0].user_name, user, channel, infoArrays, client);
+                }
               });
           }
         } else {
@@ -111,7 +114,7 @@ function addPoints(client, splitMsg, user, channel, infoArrays, customSettings) 
             .select('user_name', 'points')
             .where('user_name', msgUser)
             .then((returnData) => {
-              readAndWritePoints(returnData, msgUser, user, infoArrays, client);
+              readAndWritePoints(returnData, msgUser, user, channel, infoArrays, client);
             })
             .catch((err) => {
               console.log(err);
@@ -123,7 +126,7 @@ function addPoints(client, splitMsg, user, channel, infoArrays, customSettings) 
   }
 }
 
-async function readAndWritePoints(returnData, msgUser, user, infoArrays, client) {
+async function readAndWritePoints(returnData, msgUser, user, channel, infoArrays, client) {
   if (returnData.length != 0) {
     var newData = JSON.parse(JSON.stringify(returnData[0]));
     var points = parseInt(newData.points) + 1;
@@ -154,7 +157,6 @@ async function readAndWritePoints(returnData, msgUser, user, infoArrays, client)
         .where('user_name', msgUser)
         .update({ points: points })
         .then(() => {
-          console.log('alllll the way');
           knex
             .from('users')
             .select('*')
