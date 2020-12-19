@@ -89,7 +89,7 @@ function chatCheck(msgUser, channel, user, checkInChat, onlyMods) {
   });
 }
 
-function addPoints(client, splitMsg, user, channel, infoArrays, customSettings) {
+function addPoints(client, splitMsg, user, channel, userSettings, customSettings) {
   let msgUser = splitMsg[0].replace('@', '').toLowerCase();
   if (msgUser) {
     let check = chatCheck(msgUser, channel, user, customSettings.checkInChat, customSettings.onlyMods);
@@ -104,7 +104,14 @@ function addPoints(client, splitMsg, user, channel, infoArrays, customSettings) 
               .then((returnData) => {
                 if (returnData.length !== 0) {
                   console.log(returnData[0].user_name);
-                  readAndWritePoints(returnData, returnData[0].user_name, user, channel, infoArrays, client);
+                  readAndWritePoints(returnData, returnData[0].user_name, user, channel, userSettings, client)
+                    .then(() => {
+                      customSettings.runtime = false;
+                    })
+                    .catch((err) => {
+                      console.log(err);
+                      customSettings.runtime = false;
+                    });
                 }
               });
           }
@@ -114,11 +121,18 @@ function addPoints(client, splitMsg, user, channel, infoArrays, customSettings) 
             .select('user_name', 'points')
             .where('user_name', msgUser)
             .then((returnData) => {
-              readAndWritePoints(returnData, msgUser, user, channel, infoArrays, client);
+              readAndWritePoints(returnData, msgUser, user, channel, userSettings, client)
+                .then(() => {
+                  customSettings.runtime = false;
+                })
+                .catch((err) => {
+                  console.log(err);
+                  customSettings.runtime = false;
+                });
             })
             .catch((err) => {
               console.log(err);
-              throw err;
+              customSettings.runtime = false;
             });
         }
       }
@@ -126,13 +140,13 @@ function addPoints(client, splitMsg, user, channel, infoArrays, customSettings) 
   }
 }
 
-async function readAndWritePoints(returnData, msgUser, user, channel, infoArrays, client) {
+async function readAndWritePoints(returnData, msgUser, user, channel, userSettings, client) {
   if (returnData.length != 0) {
     var newData = JSON.parse(JSON.stringify(returnData[0]));
     var points = parseInt(newData.points) + 1;
     let oldRow, newRow;
     if (msgUser !== user.username) {
-      if (infoArrays.double.includes(msgUser)) {
+      if (userSettings.double.includes(msgUser)) {
         var points = parseInt(newData.points) + 2;
       }
       knex
@@ -167,7 +181,7 @@ async function readAndWritePoints(returnData, msgUser, user, channel, infoArrays
                   newRow = j + 1;
                   if (newRow < oldRow) {
                     client.say(channel, 'Rank has increased! ' + msgUser + ' is now rank ' + newRow);
-                    rankColumnCheck(msgUser, infoArrays.top).then(() => {
+                    rankColumnCheck(msgUser, customSettings.top).then(() => {
                       return;
                     });
                   }
