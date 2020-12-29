@@ -8,7 +8,6 @@ const { formatEmotes, getChan } = require('./modules/Message Formatting/formatEm
 const { formatBadges } = require('./modules/Message Formatting/formatBadges.js');
 
 //Kraken Modules
-const { request } = require('./modules/Kraken/Fetch.js');
 const { getBadges, twitchNameToUser } = require('./modules/Kraken/Kraken.js');
 const { getBTTVEmotes } = require('./modules/Kraken/getBTTVEmotes.js');
 
@@ -42,7 +41,7 @@ var useColor = true,
   doTimeouts = true;
 
 var myChannel = ['colloquialowl'];
-const customSettings = { checkInChat: true, onlyMods: false, runtime: false, top: [1, 5, 10] };
+const customSettings = { checkInChat: false, onlyMods: false, runtime: false, top: [1, 5, 10], rankPost: 5 };
 const userSettings = { cooldown: ['nightbot', 'colloquialbot'], removeTimer: [], double: [] };
 const messageSettings = { display: true };
 
@@ -82,9 +81,7 @@ function newConnection(socket) {
       .slice(1)
       .split(' ')
       .filter((el) => el.length > 0);
-    console.log(customSettings.runtime);
     if (splitMsg[0] == 'me') {
-      console.log('yes');
       inputUser(client, user, channel, userSettings, customSettings);
     } else if (splitMsg[0] == 'rank') {
       checkRank(client, splitMsg, user, channel, userSettings, customSettings);
@@ -170,10 +167,10 @@ function newConnection(socket) {
 
   setInterval(function () {
     topRankinChat();
-  }, 300000);
+  }, Math.floor(customSettings.rankPost * 60000));
 
   function topRankinChat() {
-    topRank(customSettings.top, socket).then((data) => {
+    topRank(customSettings, socket).then((data) => {
       if (data) {
         socket.emit('rankings', data);
       }
