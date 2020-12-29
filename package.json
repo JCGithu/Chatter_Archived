@@ -4,7 +4,7 @@
   "description": "chatbot",
   "main": "chatter.js",
   "scripts": {
-    "test": "start"
+    "build": "browserify ./public/chatter.js -o ./public/browser/bundle.js && npm start"
   },
   "author": "colloquialowl",
   "license": "ISC",
@@ -14,10 +14,11 @@
     "express": "^4.17.1",
     "knex": "^0.21.6",
     "node-fetch": "^2.6.1",
-    "request": "^2.88.2",
     "socket.io": "^2.3.0",
     "sqlite3": "^5.0.0",
-    "tmi.js": "^1.5.0",
-    "underscore": "^1.11.0"
+    "tmi.js": "^1.5.0"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.0"
   }
 }
