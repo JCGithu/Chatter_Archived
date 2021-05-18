@@ -9,7 +9,7 @@ const { formatBadges } = require('./modules/Message Formatting/formatBadges.js')
 
 //Kraken Modules
 const { getBadges, twitchNameToUser } = require('./modules/Kraken/Kraken.js');
-const { getBTTVEmotes } = require('./modules/Kraken/getBTTVEmotes.js');
+const { getBTTVEmotes, twitchBadgeCache, bttvEmoteCache } = require('./modules/Kraken/getBTTVEmotes.js');
 
 //Command Modules
 const { checkRank } = require('./modules/Commands/checkRank.js');
@@ -40,9 +40,8 @@ var useColor = true,
   showEmotes = true,
   doTimeouts = true;
 
-var myChannel = ['colloquialowl'];
 const customSettings = { checkInChat: false, onlyMods: false, runtime: false, top: [1, 5, 10], rankPost: 5 };
-const userSettings = { cooldown: ['nightbot', 'colloquialbot'], removeTimer: [], double: [] };
+const chatProperties = { cooldown: ['nightbot', 'colloquialbot'], removeTimer: [], double: [] };
 const messageSettings = { display: true };
 
 const tmi = require('tmi.js');
@@ -51,21 +50,10 @@ const opts = {
     username: 'colloquialbot',
     password: process.env.OAUTH4,
   },
-  channels: myChannel,
+  channels: ['colloquialowl'],
 };
 
-var removeTimer = [],
-  top = [1, 5, 10],
-  double = [];
-
-const twitchBadgeCache = {
-  data: { global: {} },
-};
-const bttvEmoteCache = {
-  lastUpdated: 0,
-  data: { global: [] },
-  urlTemplate: '//cdn.betterttv.net/emote/{{id}}/{{image}}',
-};
+let runtime = false;
 
 function newConnection(socket) {
   console.log('New connection: ' + socket.id);
@@ -76,36 +64,33 @@ function newConnection(socket) {
 
   //POINTS SYSTEM
   function dataInput(message, user, channel) {
-    customSettings.runtime = true;
+    runtime = true;
+    messageSettings.display = false;
     let splitMsg = message
       .slice(1)
       .split(' ')
       .filter((el) => el.length > 0);
-    if (splitMsg[0] == 'me') {
-      inputUser(client, user, channel, userSettings, customSettings);
-    } else if (splitMsg[0] == 'rank') {
-      checkRank(client, splitMsg, user, channel, userSettings, customSettings);
-      messageSettings.display = false;
-    } else if (user.username == channel.slice(1) && splitMsg[0] == 'leaderboard') {
-      topRankinChat();
-      messageSettings.display = false;
-    } else if (userSettings.cooldown.includes(user.username) == false && splitMsg[0] != null) {
-      addPoints(client, splitMsg, user, channel, userSettings, customSettings);
-      if (user.username !== channel.slice(1)) {
-        userSettings.cooldown.push(user.username);
-      }
+
+    if (splitMsg[0] == 'me') inputUser(client, user, channel, chatProperties, customSettings);
+
+    if (splitMsg[0] == 'rank') checkRank(client, splitMsg, user, channel, chatProperties, customSettings);
+
+    if (user.username == channel.slice(1) && splitMsg[0] == 'leaderboard') topRankinChat();
+
+    if (chatProperties.cooldown.includes(user.username)) console.log('User on cooldown');
+
+    if (chatProperties.cooldown.includes(user.username) == false && splitMsg[0] != null) {
+      addPoints(client, splitMsg, user, channel, chatProperties, customSettings);
+      if (user.username !== channel.slice(1)) chatProperties.cooldown.push(user.username);
       setTimeout(function () {
-        textParse.cleave(userSettings.cooldown, user.username);
+        textParse.cleave(chatProperties.cooldown, user.username);
       }, 60000);
-    } else {
-      messageSettings.display = false;
-      console.log('User is on cooldown');
     }
+
+    return;
   }
   function onMessageHandler(channel, user, message, self) {
-    if (self || textParse.chatFilter.test(message)) {
-      return;
-    }
+    if (self || textParse.chatFilter.test(message)) return;
 
     let style = [];
     let userBracket = top.length + 1;
@@ -113,28 +98,28 @@ function newConnection(socket) {
     var fmtBadges = formatBadges(channel, user, twitchBadgeCache);
 
     if (message.startsWith('+')) {
-      function runProcessing(message, user, channel) {
-        if (customSettings.runtime == false) {
+      function runtimeLoop(message, user, channel) {
+        if (runtime === false) {
           dataInput(message, user, channel);
           style.push('function');
-        } else {
-          setTimeout(function () {
-            runProcessing(message, user, channel);
-          }, 500);
+          return;
         }
+        setTimeout(function () {
+          runtimeLoop(message, user, channel);
+        }, 500);
       }
-      runProcessing(message, user, channel);
-    } else if (message == '-me') {
-      userSettings.removeTimer.push(user.username);
+      runtimeLoop(message, user, channel);
+    }
+
+    if (message === '-me') {
+      chatProperties.removeTimer.push(user.username);
       client.say(channel, `${user['display-name']} to delete your ranking whisper to this bot "-me please"`);
       setTimeout(function () {
-        textParse.cleave(userSettings.removeTimer, user.username);
+        textParse.cleave(chatProperties.removeTimer, user.username);
       }, 60000);
     }
 
-    if (user['custom-reward-id'] === '4a728898-4e19-4ed9-be1e-f76df1d8c1a5') {
-      double.push(user.username);
-    }
+    if (user['custom-reward-id'] === '4a728898-4e19-4ed9-be1e-f76df1d8c1a5') chatProperties.double.push(user.username);
 
     knex('users')
       .select('user_name')
@@ -142,26 +127,21 @@ function newConnection(socket) {
       .then((rows) => {
         if (rows.length === 0) {
           socket.emit('newMsg', formattedMsg, user['display-name'], style, userBracket, fmtBadges);
-        } else {
-          knex
-            .from('users')
-            .where('user_name', user.username)
-            .select('rank')
-            .then((rankNum) => {
-              if (rankNum[0].rank != null) {
-                userBracket = rankNum[0].rank;
-              }
-              if (messageSettings.display == true) {
-                socket.emit('newMsg', formattedMsg, user['display-name'], style, userBracket, fmtBadges);
-              } else {
-                messageSettings.display = true;
-              }
-              console.log(user['display-name'] + ': ' + message);
-            })
-            .catch((err) => {
-              console.log(err);
-            });
+          return;
         }
+      })
+      .select('rank')
+      .then((rankNum) => {
+        if (rankNum[0].rank != null) userBracket = rankNum[0].rank;
+        if (messageSettings.display === true) {
+          socket.emit('newMsg', formattedMsg, user['display-name'], style, userBracket, fmtBadges);
+          return;
+        }
+        messageSettings.display = true;
+        console.log(user['display-name'] + ': ' + message);
+      })
+      .catch((err) => {
+        console.log(err);
       });
   }
 
@@ -171,9 +151,7 @@ function newConnection(socket) {
 
   function topRankinChat() {
     topRank(customSettings, socket).then((data) => {
-      if (data) {
-        socket.emit('rankings', data);
-      }
+      if (data) socket.emit('rankings', data);
     });
   }
 
@@ -182,14 +160,9 @@ function newConnection(socket) {
     getBTTVEmotes(bttvEmoteCache);
     getBadges().then((badges) => (twitchBadgeCache.data.global = badges));
   });
-  client.on('disconnected', function () {
-    twitchBadgeCache.data = { global: {} };
-    bttvEmoteCache.data = { global: [] };
-  });
+
   client.on('join', (channel, username, self) => {
-    if (!self) {
-      return;
-    }
+    if (!self) return;
     console.log('JOINED!');
     let chan = getChan(channel);
     getBTTVEmotes(bttvEmoteCache, chan);
@@ -197,16 +170,15 @@ function newConnection(socket) {
       .then((user) => getBadges(user._id))
       .then((badges) => (twitchBadgeCache.data[chan] = badges));
   });
+
   client.on('whisper', (channel, user, message, self) => {
-    if (self || textParse.chatFilter.test(message)) {
-      return;
-    }
-    if (message == '-me please') {
-      removeUser(user);
-    }
+    if (self || textParse.chatFilter.test(message)) return;
+    if (message === '-me please') removeUser(user);
   });
+
   client.on('timeout', (channel, username, reason, duration, userstate) => {
     socket.emit('timeout', username);
   });
+
   client.connect();
 }

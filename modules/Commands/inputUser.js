@@ -1,6 +1,6 @@
 const { knex } = require('../KnexOpts.js');
 
-function inputUser(client, user, channel, userSettings, customSettings) {
+function inputUser(client, user, channel, chatProperties, customSettings) {
   let low = customSettings.top.length + 1;
   knex('users')
     .select('user_name')

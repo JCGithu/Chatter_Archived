@@ -89,7 +89,7 @@ function chatCheck(msgUser, channel, user, checkInChat, onlyMods) {
   });
 }
 
-function addPoints(client, splitMsg, user, channel, userSettings, customSettings) {
+function addPoints(client, splitMsg, user, channel, chatProperties, customSettings) {
   let msgUser = splitMsg[0].replace('@', '').toLowerCase();
   if (msgUser) {
     let check = chatCheck(msgUser, channel, user, customSettings.checkInChat, customSettings.onlyMods);
@@ -104,7 +104,7 @@ function addPoints(client, splitMsg, user, channel, userSettings, customSettings
               .then((returnData) => {
                 if (returnData.length !== 0) {
                   console.log(returnData[0].user_name);
-                  readAndWritePoints(returnData, returnData[0].user_name, user, channel, userSettings, client)
+                  readAndWritePoints(returnData, returnData[0].user_name, user, channel, chatProperties, client)
                     .then(() => {
                       customSettings.runtime = false;
                     })
@@ -121,7 +121,7 @@ function addPoints(client, splitMsg, user, channel, userSettings, customSettings
             .select('user_name', 'points')
             .where('user_name', msgUser)
             .then((returnData) => {
-              readAndWritePoints(returnData, msgUser, user, channel, userSettings, client)
+              readAndWritePoints(returnData, msgUser, user, channel, chatProperties, client)
                 .then(() => {
                   customSettings.runtime = false;
                 })
@@ -140,13 +140,13 @@ function addPoints(client, splitMsg, user, channel, userSettings, customSettings
   }
 }
 
-async function readAndWritePoints(returnData, msgUser, user, channel, userSettings, client) {
+async function readAndWritePoints(returnData, msgUser, user, channel, chatProperties, client) {
   if (returnData.length != 0) {
     var newData = JSON.parse(JSON.stringify(returnData[0]));
     var points = parseInt(newData.points) + 1;
     let oldRow, newRow;
     if (msgUser !== user.username) {
-      if (userSettings.double.includes(msgUser)) {
+      if (chatProperties.double.includes(msgUser)) {
         var points = parseInt(newData.points) + 2;
       }
       knex

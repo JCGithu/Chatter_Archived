@@ -1,7 +1,7 @@
 const { knex } = require('../KnexOpts.js');
 const textParse = require('../Message Formatting/textParse.js');
 
-function checkRank(client, splitMsg, user, channel, userSettings, customSettings) {
+function checkRank(client, splitMsg, user, channel, chatProperties, customSettings) {
   msgUser = user.username;
   if (splitMsg[1] != null && splitMsg[1] !== 'me') {
     msgUser = splitMsg[1].replace('@', '').toLowerCase();
